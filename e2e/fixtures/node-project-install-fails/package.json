@@ -1,0 +1,9 @@
+{
+  "name": "e2e-fixture-node-project-install-fails",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "vibehub-e2e-nonexistent-package-xyz": "1.0.0"
+  }
+}

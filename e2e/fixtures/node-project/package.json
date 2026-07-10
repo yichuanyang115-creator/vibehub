@@ -1,0 +1,6 @@
+{
+  "name": "e2e-fixture-node-project",
+  "scripts": {
+    "dev": "node server.js"
+  }
+}

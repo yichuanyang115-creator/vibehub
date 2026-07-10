@@ -1,0 +1,9 @@
+{
+  "name": "e2e-fixture-node-project-needs-install",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "ms": "2.1.3"
+  }
+}
