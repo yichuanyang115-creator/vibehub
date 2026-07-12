@@ -6,8 +6,7 @@ import {
   stopProject,
   isProjectRunning,
   hasNodeModules,
-  runNpmInstall,
-  detachProject
+  runNpmInstall
 } from '../process-manager'
 import type { Project } from '../../shared/types'
 
@@ -24,6 +23,8 @@ function broadcastStatus(event: IpcMainInvokeEvent, project: Project): void {
 
 async function startWebProject(event: IpcMainInvokeEvent, project: Project): Promise<void> {
   const projectId = project.id
+  let hasReachedReady = false
+  let launchFailed = false
   const port = await getAvailablePort()
   const launchingProject = updateProject(projectId, { status: 'launching', port })
   if (launchingProject) {
@@ -33,25 +34,42 @@ async function startWebProject(event: IpcMainInvokeEvent, project: Project): Pro
   const launch = launchWebProject(project, port)
 
   launch.onReady(() => {
+    hasReachedReady = true
     shell.openExternal(`http://localhost:${port}`)
-    detachProject(projectId)
-    const stoppedProject = updateProject(projectId, {
-      status: 'stopped',
-      port: null,
+    const runningProject = updateProject(projectId, {
+      status: 'running',
+      port,
       lastOpenedAt: Date.now(),
       openCount: project.openCount + 1
     })
-    if (stoppedProject) {
-      broadcastStatus(event, stoppedProject)
+    if (runningProject) {
+      broadcastStatus(event, runningProject)
     }
   })
 
   launch.onError((message) => {
+    launchFailed = true
     console.error(`Project ${projectId} launch error: ${message}`)
-    detachProject(projectId)
+    // 端口等待超时等错误发生时，子进程可能仍然存活。先终止整个进程组，
+    // 避免界面显示错误但后台进程继续占用端口。
+    stopProject(projectId)
     const errorProject = updateProject(projectId, { status: 'error', port: null })
     if (errorProject) {
       broadcastStatus(event, errorProject)
+    }
+  })
+
+  launch.onExit(({ code, wasIntentionalStop }) => {
+    // 启动失败触发的清理不能被随后到达的 exit 事件覆盖成 stopped。
+    // 用户主动停止、或服务运行后正常自行退出，才进入 stopped；其它情况进入 error。
+    const nextStatus = launchFailed
+      ? 'error'
+      : wasIntentionalStop || (hasReachedReady && code === 0)
+        ? 'stopped'
+        : 'error'
+    const exitedProject = updateProject(projectId, { status: nextStatus, port: null })
+    if (exitedProject) {
+      broadcastStatus(event, exitedProject)
     }
   })
 }
