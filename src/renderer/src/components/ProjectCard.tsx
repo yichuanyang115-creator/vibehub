@@ -140,7 +140,7 @@ export function ProjectCard({
             </button>
           )}
 
-          {canControl && project.status === 'running' && project.projectKind === 'app' && (
+          {canControl && project.status === 'running' && (
             <button
               type="button"
               onClick={() => onStop(project.id)}
