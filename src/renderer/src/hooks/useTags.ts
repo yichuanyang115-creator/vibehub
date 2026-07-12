@@ -17,8 +17,19 @@ export function useTags(): UseTagsResult {
   }, [])
 
   useEffect(() => {
-    refresh().catch((error) => console.error('Failed to load tags', error))
-  }, [refresh])
+    let isActive = true
+    window.api
+      .getTags()
+      .then((result) => {
+        if (isActive) {
+          setTags(result)
+        }
+      })
+      .catch((error) => console.error('Failed to load tags', error))
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   const createTag = useCallback(
     async (name: string): Promise<Tag> => {

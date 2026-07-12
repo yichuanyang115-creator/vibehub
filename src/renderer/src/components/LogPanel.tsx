@@ -14,7 +14,12 @@ const DEFAULT_HEIGHT_PX = 240
 const MIN_HEIGHT_PX = 140
 const MAX_HEIGHT_PX = 480
 
-export function LogPanel({ projectId, defaultTab, isProcessActive, onClose }: LogPanelProps): React.JSX.Element {
+export function LogPanel({
+  projectId,
+  defaultTab,
+  isProcessActive,
+  onClose
+}: LogPanelProps): React.JSX.Element {
   const { logs } = useProjectLogs(projectId)
   const [activeTab, setActiveTab] = useState<LogStream>(defaultTab)
   const [height, setHeight] = useState(DEFAULT_HEIGHT_PX)
@@ -39,15 +44,21 @@ export function LogPanel({ projectId, defaultTab, isProcessActive, onClose }: Lo
     }
     // 面板从底部滑出，向上拖拽把手（鼠标 Y 减小）应该增大高度
     const delta = dragStateRef.current.startY - event.clientY
-    const nextHeight = Math.min(MAX_HEIGHT_PX, Math.max(MIN_HEIGHT_PX, dragStateRef.current.startHeight + delta))
+    const nextHeight = Math.min(
+      MAX_HEIGHT_PX,
+      Math.max(MIN_HEIGHT_PX, dragStateRef.current.startHeight + delta)
+    )
     setHeight(nextHeight)
   }, [])
 
-  const handleDragEnd = useCallback((): void => {
-    dragStateRef.current = null
-    document.removeEventListener('mousemove', handleDragMove)
-    document.removeEventListener('mouseup', handleDragEnd)
-  }, [handleDragMove])
+  const handleDragEnd = useCallback(
+    function handleDragEnd(): void {
+      dragStateRef.current = null
+      document.removeEventListener('mousemove', handleDragMove)
+      document.removeEventListener('mouseup', handleDragEnd)
+    },
+    [handleDragMove]
+  )
 
   const handleDragStart = useCallback(
     (event: React.MouseEvent): void => {
@@ -88,7 +99,12 @@ export function LogPanel({ projectId, defaultTab, isProcessActive, onClose }: Lo
             </button>
           ))}
         </div>
-        <button type="button" onClick={onClose} aria-label="关闭日志面板" className="text-white/50 hover:text-white">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="关闭日志面板"
+          className="text-white/50 hover:text-white"
+        >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
@@ -110,7 +126,10 @@ export function LogPanel({ projectId, defaultTab, isProcessActive, onClose }: Lo
               </div>
             ))}
             {isProcessActive && (
-              <span className="inline-block h-3 w-1.5 animate-pulse bg-log-text" aria-hidden="true" />
+              <span
+                className="inline-block h-3 w-1.5 animate-pulse bg-log-text"
+                aria-hidden="true"
+              />
             )}
           </>
         )}

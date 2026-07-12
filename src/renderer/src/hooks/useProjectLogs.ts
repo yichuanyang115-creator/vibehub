@@ -6,14 +6,10 @@ interface UseProjectLogsResult {
   loadLogs: () => void
 }
 
-export function useProjectLogs(projectId: string | null): UseProjectLogsResult {
+export function useProjectLogs(projectId: string): UseProjectLogsResult {
   const [logs, setLogs] = useState<LogEntry[]>([])
 
   const loadLogs = useCallback((): void => {
-    if (!projectId) {
-      setLogs([])
-      return
-    }
     window.api
       .getLogsForProject(projectId)
       .then(setLogs)
@@ -21,13 +17,21 @@ export function useProjectLogs(projectId: string | null): UseProjectLogsResult {
   }, [projectId])
 
   useEffect(() => {
-    loadLogs()
-  }, [loadLogs])
+    let isActive = true
+    window.api
+      .getLogsForProject(projectId)
+      .then((entries) => {
+        if (isActive) {
+          setLogs(entries)
+        }
+      })
+      .catch((error) => console.error('Failed to load logs', error))
+    return () => {
+      isActive = false
+    }
+  }, [projectId])
 
   useEffect(() => {
-    if (!projectId) {
-      return undefined
-    }
     return window.api.onLogAppended((appendedProjectId, entry) => {
       if (appendedProjectId === projectId) {
         setLogs((current) => [...current, entry])

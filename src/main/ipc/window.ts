@@ -1,12 +1,13 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { getRunningProjectIds, stopProjectAndWait } from '../process-manager'
 
-// REQ-011：确认关闭后不能再被这里的 close 拦截器二次拦截，否则永远关不掉窗口
-let isClosingConfirmed = false
+// REQ-011：确认关闭只对本次要关闭的窗口有效。不能使用跨窗口共享的布尔值，
+// 否则 macOS 上关闭后重新创建的窗口会继承旧授权，跳过运行项目确认。
+const confirmedWindows = new WeakSet<BrowserWindow>()
 
 export function attachCloseGuard(window: BrowserWindow): void {
   window.on('close', (event) => {
-    if (isClosingConfirmed) {
+    if (confirmedWindows.has(window)) {
       return
     }
     const runningCount = getRunningProjectIds().length
@@ -21,7 +22,9 @@ export function attachCloseGuard(window: BrowserWindow): void {
 export function registerWindowIpc(): void {
   ipcMain.handle('window:confirmClose', async () => {
     await Promise.all(getRunningProjectIds().map((projectId) => stopProjectAndWait(projectId)))
-    isClosingConfirmed = true
-    BrowserWindow.getAllWindows().forEach((window) => window.close())
+    BrowserWindow.getAllWindows().forEach((window) => {
+      confirmedWindows.add(window)
+      window.close()
+    })
   })
 }
