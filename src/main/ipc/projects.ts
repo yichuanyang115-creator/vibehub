@@ -106,6 +106,7 @@ function addProject(folderPath: string): AddProjectResult {
     description: '',
     iconPath: null,
     tags: [],
+    isFavorite: false,
     status: isUnrecognized ? 'error' : 'stopped',
     port: null,
     createdAt: now,

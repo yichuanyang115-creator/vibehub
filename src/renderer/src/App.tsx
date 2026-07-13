@@ -18,15 +18,19 @@ import type { Project, SortOption } from '../../shared/types'
 // REQ-010：排序方式对最近打开/最常打开值相同的项目做兜底，避免顺序不稳定
 function sortProjects(projects: Project[], sortOption: SortOption): Project[] {
   const sorted = [...projects]
+  const compareFavorite = (a: Project, b: Project): number =>
+    Number(b.isFavorite) - Number(a.isFavorite)
   switch (sortOption) {
     case 'recent':
-      return sorted.sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0))
+      return sorted.sort(
+        (a, b) => compareFavorite(a, b) || (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0)
+      )
     case 'frequent':
-      return sorted.sort((a, b) => b.openCount - a.openCount)
+      return sorted.sort((a, b) => compareFavorite(a, b) || b.openCount - a.openCount)
     case 'name-asc':
-      return sorted.sort((a, b) => a.name.localeCompare(b.name))
+      return sorted.sort((a, b) => compareFavorite(a, b) || a.name.localeCompare(b.name))
     case 'name-desc':
-      return sorted.sort((a, b) => b.name.localeCompare(a.name))
+      return sorted.sort((a, b) => compareFavorite(a, b) || b.name.localeCompare(a.name))
   }
 }
 
@@ -226,6 +230,9 @@ function App(): React.JSX.Element {
                   onStop={stopProject}
                   onOpenLogs={setOpenLogPanelProjectId}
                   onEdit={setEditingProjectId}
+                  onToggleFavorite={(projectId, isFavorite) =>
+                    updateProject(projectId, { isFavorite })
+                  }
                   onRequestDelete={handleRequestDelete}
                   onRequestUpdatePath={handleRequestUpdatePath}
                 />

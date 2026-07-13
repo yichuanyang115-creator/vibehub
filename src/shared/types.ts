@@ -22,6 +22,7 @@ export interface Project {
   description: string
   iconPath: string | null
   tags: string[]
+  isFavorite: boolean
   status: ProjectStatus
   port: number | null
   createdAt: number
@@ -48,6 +49,7 @@ export interface UpdateProjectInput {
   description?: string
   tags?: string[]
   startCommand?: string | null
+  isFavorite?: boolean
 }
 
 export interface UploadIconResult {
