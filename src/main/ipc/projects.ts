@@ -14,6 +14,7 @@ import { stopProjectAndWait, isProjectRunning } from '../process-manager'
 import type {
   Project,
   AddProjectResult,
+  ProjectEditor,
   UpdateProjectInput,
   UploadIconResult
 } from '../../shared/types'
@@ -178,6 +179,25 @@ function openProjectInTerminal(projectId: string): Promise<boolean> {
   })
 }
 
+const EDITOR_APP_NAME: Record<ProjectEditor, string> = {
+  cursor: 'Cursor',
+  vscode: 'Visual Studio Code'
+}
+
+function openProjectInEditor(projectId: string, editor: ProjectEditor): Promise<boolean> {
+  const project = loadProjects().find((item) => item.id === projectId)
+  const editorAppName = EDITOR_APP_NAME[editor]
+  if (!project || !existsSync(project.path) || !editorAppName) {
+    return Promise.resolve(false)
+  }
+  // 编辑器必须来自白名单，项目路径只从 store 读取，renderer 无法传入任意应用或路径。
+  // E2E 复用可替换执行器，避免自动化测试真的弹出编辑器窗口。
+  const openCommand = process.env.VIBEHUB_TEST_OPEN_COMMAND ?? '/usr/bin/open'
+  return new Promise((resolve) => {
+    execFile(openCommand, ['-a', editorAppName, project.path], (error) => resolve(error === null))
+  })
+}
+
 export function registerProjectsIpc(): void {
   ipcMain.handle('projects:getAll', () => {
     return loadProjects()
@@ -212,5 +232,9 @@ export function registerProjectsIpc(): void {
 
   ipcMain.handle('projects:openInTerminal', (_event, projectId: string) => {
     return openProjectInTerminal(projectId)
+  })
+
+  ipcMain.handle('projects:openInEditor', (_event, projectId: string, editor: ProjectEditor) => {
+    return openProjectInEditor(projectId, editor)
   })
 }

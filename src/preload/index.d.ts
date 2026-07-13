@@ -3,6 +3,7 @@ import type {
   AddProjectResult,
   LogEntry,
   Project,
+  ProjectEditor,
   Tag,
   UpdateProjectInput,
   UploadIconResult
@@ -17,6 +18,7 @@ interface Api {
   updateProjectPath: (projectId: string, newPath: string) => Promise<Project | null>
   revealProjectInFinder: (projectId: string) => Promise<boolean>
   openProjectInTerminal: (projectId: string) => Promise<boolean>
+  openProjectInEditor: (projectId: string, editor: ProjectEditor) => Promise<boolean>
   uploadIcon: (projectId: string, mimeType: string, base64Data: string) => Promise<UploadIconResult>
   createTag: (name: string) => Promise<Tag>
   renameTag: (tagId: string, name: string) => Promise<Tag | null>

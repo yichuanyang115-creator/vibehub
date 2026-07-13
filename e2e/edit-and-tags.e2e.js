@@ -102,6 +102,57 @@ async function testOpenProjectInTerminal() {
   }
 }
 
+async function testOpenProjectInEditor() {
+  const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
+  try {
+    await withApp(testHome, async (window) => {
+      const addResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        NODE_FIXTURE
+      )
+      assert.equal(addResult.success, true, '项目应该添加成功')
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+      await window.locator('button[aria-label="用代码编辑器打开"]').click()
+      assert.equal(
+        await window.locator('button:has-text("用 Cursor 打开")').isVisible(),
+        true,
+        '编辑器菜单应该提供 Cursor'
+      )
+      assert.equal(
+        await window.locator('button:has-text("用 VS Code 打开")').isVisible(),
+        true,
+        '编辑器菜单应该提供 VS Code'
+      )
+
+      const cursorResult = await window.evaluate((projectId) => {
+        return window.api.openProjectInEditor(projectId, 'cursor')
+      }, addResult.project.id)
+      assert.equal(cursorResult, true, '有效项目应该成功调用 Cursor 打开命令')
+
+      const vscodeResult = await window.evaluate((projectId) => {
+        return window.api.openProjectInEditor(projectId, 'vscode')
+      }, addResult.project.id)
+      assert.equal(vscodeResult, true, '有效项目应该成功调用 VS Code 打开命令')
+
+      const missingResult = await window.evaluate(() =>
+        window.api.openProjectInEditor('missing-project-id', 'cursor')
+      )
+      assert.equal(missingResult, false, '不存在的项目 ID 不应该执行编辑器命令')
+
+      const unsupportedResult = await window.evaluate((projectId) => {
+        return window.api.openProjectInEditor(projectId, 'unsupported')
+      }, addResult.project.id)
+      assert.equal(unsupportedResult, false, '白名单之外的编辑器不应该执行命令')
+    })
+    console.log('PASS: testOpenProjectInEditor')
+  } finally {
+    fs.rmSync(testHome, { recursive: true, force: true })
+  }
+}
+
 async function testEditAndTagFlow() {
   const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
   try {
@@ -328,6 +379,7 @@ async function main() {
   await testFavoriteProjectsStayPinnedAndPersist()
   await testRevealProjectInFinder()
   await testOpenProjectInTerminal()
+  await testOpenProjectInEditor()
   console.log('ALL E2E TESTS PASSED')
 }
 

@@ -2,6 +2,8 @@ export type ProjectKind = 'web' | 'app'
 
 export type ProjectType = 'node' | 'python' | 'static' | 'unknown'
 
+export type ProjectEditor = 'cursor' | 'vscode'
+
 export type ProjectStatus =
   | 'stopped'
   | 'launching'

@@ -1,6 +1,7 @@
 import { useState, type MouseEvent } from 'react'
 import {
   AppWindow,
+  Code2,
   FileText,
   Folder,
   FolderOpen,
@@ -11,9 +12,10 @@ import {
   Square,
   Star
 } from 'lucide-react'
-import type { Project, Tag } from '../../../shared/types'
+import type { Project, ProjectEditor, Tag } from '../../../shared/types'
 import { StatusBadge } from './StatusBadge'
 import { ProjectContextMenu } from './ProjectContextMenu'
+import { ProjectEditorMenu } from './ProjectEditorMenu'
 import { TAG_DOT_CLASS } from '../lib/tag-colors'
 
 interface ProjectCardProps {
@@ -26,6 +28,7 @@ interface ProjectCardProps {
   onToggleFavorite: (projectId: string, isFavorite: boolean) => void
   onRevealInFinder: (projectId: string) => void
   onOpenInTerminal: (projectId: string) => void
+  onOpenInEditor: (projectId: string, editor: ProjectEditor) => void
   onRequestDelete: (projectId: string) => void
   onRequestUpdatePath: (projectId: string) => void
 }
@@ -47,10 +50,12 @@ export function ProjectCard({
   onToggleFavorite,
   onRevealInFinder,
   onOpenInTerminal,
+  onOpenInEditor,
   onRequestDelete,
   onRequestUpdatePath
 }: ProjectCardProps): React.JSX.Element {
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [isEditorMenuOpen, setIsEditorMenuOpen] = useState(false)
   const TypeIcon = TYPE_ICON[project.projectKind]
   const isUnrecognized = project.status === 'error' && project.projectType === 'unknown'
   const isMissing = project.status === 'missing'
@@ -134,6 +139,24 @@ export function ProjectCard({
               >
                 <SquareTerminal className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
+              <div className="relative flex shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsEditorMenuOpen((isOpen) => !isOpen)}
+                  aria-label="用代码编辑器打开"
+                  aria-expanded={isEditorMenuOpen}
+                  title="用 Cursor 或 VS Code 打开"
+                  className="text-text-tertiary transition-colors hover:text-text-secondary"
+                >
+                  <Code2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                {isEditorMenuOpen && (
+                  <ProjectEditorMenu
+                    onSelect={(editor) => onOpenInEditor(project.id, editor)}
+                    onClose={() => setIsEditorMenuOpen(false)}
+                  />
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => onEdit(project.id)}
@@ -282,6 +305,7 @@ export function ProjectCard({
           onEdit={() => onEdit(project.id)}
           onRevealInFinder={() => onRevealInFinder(project.id)}
           onOpenInTerminal={() => onOpenInTerminal(project.id)}
+          onOpenInEditor={(editor) => onOpenInEditor(project.id, editor)}
           onDelete={() => onRequestDelete(project.id)}
           onClose={() => setContextMenuPos(null)}
         />

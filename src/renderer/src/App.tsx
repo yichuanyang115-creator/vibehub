@@ -13,7 +13,7 @@ import { TagManageModal } from './components/TagManageModal'
 import { ConfirmModal } from './components/ConfirmModal'
 import { SearchBar } from './components/SearchBar'
 import { SortDropdown } from './components/SortDropdown'
-import type { Project, SortOption } from '../../shared/types'
+import type { Project, ProjectEditor, SortOption } from '../../shared/types'
 
 // REQ-010：排序方式对最近打开/最常打开值相同的项目做兜底，避免顺序不稳定
 function sortProjects(projects: Project[], sortOption: SortOption): Project[] {
@@ -149,6 +149,21 @@ function App(): React.JSX.Element {
       })
   }, [])
 
+  const handleOpenInEditor = useCallback((projectId: string, editor: ProjectEditor): void => {
+    const editorName = editor === 'cursor' ? 'Cursor' : 'VS Code'
+    window.api
+      .openProjectInEditor(projectId, editor)
+      .then((success) => {
+        setProjectActionError(
+          success ? null : `无法用 ${editorName} 打开项目，请确认编辑器已安装且项目路径有效`
+        )
+      })
+      .catch((error) => {
+        console.error(`Failed to open project in ${editorName}`, error)
+        setProjectActionError(`无法用 ${editorName} 打开项目`)
+      })
+  }, [])
+
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>): void => {
     event.preventDefault()
     setIsDragOver(true)
@@ -273,6 +288,7 @@ function App(): React.JSX.Element {
                   }
                   onRevealInFinder={handleRevealInFinder}
                   onOpenInTerminal={handleOpenInTerminal}
+                  onOpenInEditor={handleOpenInEditor}
                   onRequestDelete={handleRequestDelete}
                   onRequestUpdatePath={handleRequestUpdatePath}
                 />
