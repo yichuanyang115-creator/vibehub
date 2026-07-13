@@ -1,5 +1,16 @@
 import { useState, type MouseEvent } from 'react'
-import { AppWindow, FileText, Folder, Globe, Pencil, Play, Square } from 'lucide-react'
+import {
+  AppWindow,
+  FileText,
+  Folder,
+  FolderOpen,
+  Globe,
+  Pencil,
+  Play,
+  SquareTerminal,
+  Square,
+  Star
+} from 'lucide-react'
 import type { Project, Tag } from '../../../shared/types'
 import { StatusBadge } from './StatusBadge'
 import { ProjectContextMenu } from './ProjectContextMenu'
@@ -12,6 +23,9 @@ interface ProjectCardProps {
   onStop: (projectId: string) => void
   onOpenLogs: (projectId: string) => void
   onEdit: (projectId: string) => void
+  onToggleFavorite: (projectId: string, isFavorite: boolean) => void
+  onRevealInFinder: (projectId: string) => void
+  onOpenInTerminal: (projectId: string) => void
   onRequestDelete: (projectId: string) => void
   onRequestUpdatePath: (projectId: string) => void
 }
@@ -30,6 +44,9 @@ export function ProjectCard({
   onStop,
   onOpenLogs,
   onEdit,
+  onToggleFavorite,
+  onRevealInFinder,
+  onOpenInTerminal,
   onRequestDelete,
   onRequestUpdatePath
 }: ProjectCardProps): React.JSX.Element {
@@ -53,6 +70,7 @@ export function ProjectCard({
   return (
     <>
       <div
+        data-project-id={project.id}
         onContextMenu={handleContextMenu}
         className={`flex flex-col gap-sm rounded-md bg-surface p-md shadow-card transition-shadow hover:shadow-card-hover ${
           isMissing ? 'border-2 border-danger' : ''
@@ -80,6 +98,42 @@ export function ProjectCard({
               <p className="line-clamp-2 flex-1 text-sm font-medium text-text-primary">
                 {project.name}
               </p>
+              <button
+                type="button"
+                onClick={() => onToggleFavorite(project.id, !project.isFavorite)}
+                aria-label={project.isFavorite ? '取消收藏' : '收藏'}
+                aria-pressed={project.isFavorite}
+                title={project.isFavorite ? '取消收藏' : '收藏并置顶'}
+                className={`shrink-0 transition-colors ${
+                  project.isFavorite
+                    ? 'text-warning'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                <Star
+                  className="h-3.5 w-3.5"
+                  fill={project.isFavorite ? 'currentColor' : 'none'}
+                  aria-hidden="true"
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => onRevealInFinder(project.id)}
+                aria-label="在 Finder 中显示"
+                title="在 Finder 中显示"
+                className="shrink-0 text-text-tertiary transition-colors hover:text-text-secondary"
+              >
+                <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenInTerminal(project.id)}
+                aria-label="在终端中打开"
+                title="在终端中打开"
+                className="shrink-0 text-text-tertiary transition-colors hover:text-text-secondary"
+              >
+                <SquareTerminal className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
               <button
                 type="button"
                 onClick={() => onEdit(project.id)}
@@ -226,6 +280,8 @@ export function ProjectCard({
           x={contextMenuPos.x}
           y={contextMenuPos.y}
           onEdit={() => onEdit(project.id)}
+          onRevealInFinder={() => onRevealInFinder(project.id)}
+          onOpenInTerminal={() => onOpenInTerminal(project.id)}
           onDelete={() => onRequestDelete(project.id)}
           onClose={() => setContextMenuPos(null)}
         />
