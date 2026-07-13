@@ -20,9 +20,46 @@ async function withApp(testHome, run) {
   try {
     const window = await app.firstWindow()
     await window.waitForLoadState('domcontentloaded')
-    await run(window)
+    await run(window, app)
   } finally {
     await app.close()
+  }
+}
+
+async function testRevealProjectInFinder() {
+  const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
+  try {
+    await withApp(testHome, async (window, app) => {
+      const addResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        NODE_FIXTURE
+      )
+      assert.equal(addResult.success, true, '项目应该添加成功')
+
+      await app.evaluate(({ shell }) => {
+        globalThis.__vibehubRevealedPath = null
+        shell.showItemInFolder = (targetPath) => {
+          globalThis.__vibehubRevealedPath = targetPath
+        }
+      })
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+      await window.locator('button[aria-label="在 Finder 中显示"]').click()
+      await window.waitForTimeout(200)
+
+      const revealedPath = await app.evaluate(() => globalThis.__vibehubRevealedPath)
+      assert.equal(revealedPath, NODE_FIXTURE, 'Finder 应收到已保存项目的真实路径')
+
+      const missingResult = await window.evaluate(() =>
+        window.api.revealProjectInFinder('missing-project-id')
+      )
+      assert.equal(missingResult, false, '不存在的项目 ID 不应该触发 Finder')
+    })
+    console.log('PASS: testRevealProjectInFinder')
+  } finally {
+    fs.rmSync(testHome, { recursive: true, force: true })
   }
 }
 
@@ -250,6 +287,7 @@ async function main() {
   await testEditAndTagFlow()
   await testUnknownTypeStartCommand()
   await testFavoriteProjectsStayPinnedAndPersist()
+  await testRevealProjectInFinder()
   console.log('ALL E2E TESTS PASSED')
 }
 

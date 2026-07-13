@@ -4,6 +4,7 @@ interface ProjectContextMenuProps {
   x: number
   y: number
   onEdit: () => void
+  onRevealInFinder: () => void
   onDelete: () => void
   onClose: () => void
 }
@@ -12,6 +13,7 @@ export function ProjectContextMenu({
   x,
   y,
   onEdit,
+  onRevealInFinder,
   onDelete,
   onClose
 }: ProjectContextMenuProps): React.JSX.Element {
@@ -33,6 +35,16 @@ export function ProjectContextMenu({
       style={{ top: y, left: x }}
       className="fixed z-50 flex min-w-[120px] flex-col rounded-md bg-surface p-xs shadow-modal"
     >
+      <button
+        type="button"
+        onClick={() => {
+          onRevealInFinder()
+          onClose()
+        }}
+        className="rounded-sm px-sm py-xs text-left text-sm text-text-primary hover:bg-surface-hover"
+      >
+        在 Finder 中显示
+      </button>
       <button
         type="button"
         onClick={() => {

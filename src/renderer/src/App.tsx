@@ -64,6 +64,7 @@ function App(): React.JSX.Element {
     refreshProjects
   } = useProjects(handleProjectError)
   const [updatePathError, setUpdatePathError] = useState<string | null>(null)
+  const [projectActionError, setProjectActionError] = useState<string | null>(null)
   const { tags, createTag, renameTag, deleteTag } = useTags()
   const [isDragOver, setIsDragOver] = useState(false)
 
@@ -123,6 +124,18 @@ function App(): React.JSX.Element {
     },
     [editingProjectId, refreshProjects]
   )
+
+  const handleRevealInFinder = useCallback((projectId: string): void => {
+    window.api
+      .revealProjectInFinder(projectId)
+      .then((success) => {
+        setProjectActionError(success ? null : '无法在 Finder 中显示项目，项目路径可能已失效')
+      })
+      .catch((error) => {
+        console.error('Failed to reveal project in Finder', error)
+        setProjectActionError('无法在 Finder 中显示项目')
+      })
+  }, [])
 
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>): void => {
     event.preventDefault()
@@ -213,6 +226,19 @@ function App(): React.JSX.Element {
             </div>
           )}
 
+          {projectActionError && (
+            <div className="flex items-center justify-between rounded-md bg-danger/10 px-md py-sm text-xs text-danger">
+              <span>{projectActionError}</span>
+              <button
+                type="button"
+                onClick={() => setProjectActionError(null)}
+                aria-label="关闭提示"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {isLoading ? (
             <SkeletonGrid />
           ) : projects.length === 0 ? (
@@ -233,6 +259,7 @@ function App(): React.JSX.Element {
                   onToggleFavorite={(projectId, isFavorite) =>
                     updateProject(projectId, { isFavorite })
                   }
+                  onRevealInFinder={handleRevealInFinder}
                   onRequestDelete={handleRequestDelete}
                   onRequestUpdatePath={handleRequestUpdatePath}
                 />

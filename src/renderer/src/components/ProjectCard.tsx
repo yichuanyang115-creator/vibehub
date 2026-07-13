@@ -1,5 +1,15 @@
 import { useState, type MouseEvent } from 'react'
-import { AppWindow, FileText, Folder, Globe, Pencil, Play, Square, Star } from 'lucide-react'
+import {
+  AppWindow,
+  FileText,
+  Folder,
+  FolderOpen,
+  Globe,
+  Pencil,
+  Play,
+  Square,
+  Star
+} from 'lucide-react'
 import type { Project, Tag } from '../../../shared/types'
 import { StatusBadge } from './StatusBadge'
 import { ProjectContextMenu } from './ProjectContextMenu'
@@ -13,6 +23,7 @@ interface ProjectCardProps {
   onOpenLogs: (projectId: string) => void
   onEdit: (projectId: string) => void
   onToggleFavorite: (projectId: string, isFavorite: boolean) => void
+  onRevealInFinder: (projectId: string) => void
   onRequestDelete: (projectId: string) => void
   onRequestUpdatePath: (projectId: string) => void
 }
@@ -32,6 +43,7 @@ export function ProjectCard({
   onOpenLogs,
   onEdit,
   onToggleFavorite,
+  onRevealInFinder,
   onRequestDelete,
   onRequestUpdatePath
 }: ProjectCardProps): React.JSX.Element {
@@ -100,6 +112,15 @@ export function ProjectCard({
                   fill={project.isFavorite ? 'currentColor' : 'none'}
                   aria-hidden="true"
                 />
+              </button>
+              <button
+                type="button"
+                onClick={() => onRevealInFinder(project.id)}
+                aria-label="在 Finder 中显示"
+                title="在 Finder 中显示"
+                className="shrink-0 text-text-tertiary transition-colors hover:text-text-secondary"
+              >
+                <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -247,6 +268,7 @@ export function ProjectCard({
           x={contextMenuPos.x}
           y={contextMenuPos.y}
           onEdit={() => onEdit(project.id)}
+          onRevealInFinder={() => onRevealInFinder(project.id)}
           onDelete={() => onRequestDelete(project.id)}
           onClose={() => setContextMenuPos(null)}
         />

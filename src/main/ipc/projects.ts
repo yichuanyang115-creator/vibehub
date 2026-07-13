@@ -1,4 +1,4 @@
-import { ipcMain, app } from 'electron'
+import { ipcMain, app, shell } from 'electron'
 import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { basename, join } from 'path'
@@ -154,6 +154,16 @@ function updatePathHandler(projectId: string, newPath: string): Project | null {
   })
 }
 
+function revealProjectInFinder(projectId: string): boolean {
+  const project = loadProjects().find((item) => item.id === projectId)
+  if (!project || !existsSync(project.path)) {
+    return false
+  }
+  // 只接受已保存项目的 ID，路径始终来自 store，不接收 renderer 传入的任意路径。
+  shell.showItemInFolder(project.path)
+  return true
+}
+
 export function registerProjectsIpc(): void {
   ipcMain.handle('projects:getAll', () => {
     return loadProjects()
@@ -180,5 +190,9 @@ export function registerProjectsIpc(): void {
 
   ipcMain.handle('projects:updatePath', (_event, projectId: string, newPath: string) => {
     return updatePathHandler(projectId, newPath)
+  })
+
+  ipcMain.handle('projects:revealInFinder', (_event, projectId: string) => {
+    return revealProjectInFinder(projectId)
   })
 }
