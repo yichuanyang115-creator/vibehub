@@ -2,6 +2,8 @@ export type ProjectKind = 'web' | 'app'
 
 export type ProjectType = 'node' | 'python' | 'static' | 'unknown'
 
+export type ProjectEditor = 'cursor' | 'vscode'
+
 export type ProjectStatus =
   | 'stopped'
   | 'launching'
@@ -22,6 +24,7 @@ export interface Project {
   description: string
   iconPath: string | null
   tags: string[]
+  isFavorite: boolean
   status: ProjectStatus
   port: number | null
   createdAt: number
@@ -48,6 +51,7 @@ export interface UpdateProjectInput {
   description?: string
   tags?: string[]
   startCommand?: string | null
+  isFavorite?: boolean
 }
 
 export interface UploadIconResult {

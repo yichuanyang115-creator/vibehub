@@ -4,6 +4,7 @@ import type {
   AddProjectResult,
   LogEntry,
   Project,
+  ProjectEditor,
   Tag,
   UpdateProjectInput,
   UploadIconResult
@@ -21,6 +22,12 @@ const api = {
     ipcRenderer.invoke('projects:delete', projectId),
   updateProjectPath: (projectId: string, newPath: string): Promise<Project | null> =>
     ipcRenderer.invoke('projects:updatePath', projectId, newPath),
+  revealProjectInFinder: (projectId: string): Promise<boolean> =>
+    ipcRenderer.invoke('projects:revealInFinder', projectId),
+  openProjectInTerminal: (projectId: string): Promise<boolean> =>
+    ipcRenderer.invoke('projects:openInTerminal', projectId),
+  openProjectInEditor: (projectId: string, editor: ProjectEditor): Promise<boolean> =>
+    ipcRenderer.invoke('projects:openInEditor', projectId, editor),
   uploadIcon: (
     projectId: string,
     mimeType: string,

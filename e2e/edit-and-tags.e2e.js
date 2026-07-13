@@ -15,14 +15,141 @@ async function withApp(testHome, run) {
   const app = await electron.launch({
     args: ['.'],
     cwd: PROJECT_ROOT,
-    env: { ...process.env, VIBEHUB_TEST_HOME: testHome }
+    env: {
+      ...process.env,
+      VIBEHUB_TEST_HOME: testHome,
+      VIBEHUB_TEST_OPEN_COMMAND: '/usr/bin/true'
+    }
   })
   try {
     const window = await app.firstWindow()
     await window.waitForLoadState('domcontentloaded')
-    await run(window)
+    await run(window, app)
   } finally {
     await app.close()
+  }
+}
+
+async function testRevealProjectInFinder() {
+  const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
+  try {
+    await withApp(testHome, async (window, app) => {
+      const addResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        NODE_FIXTURE
+      )
+      assert.equal(addResult.success, true, '项目应该添加成功')
+
+      await app.evaluate(({ shell }) => {
+        globalThis.__vibehubRevealedPath = null
+        shell.showItemInFolder = (targetPath) => {
+          globalThis.__vibehubRevealedPath = targetPath
+        }
+      })
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+      await window.locator('button[aria-label="在 Finder 中显示"]').click()
+      await window.waitForTimeout(200)
+
+      const revealedPath = await app.evaluate(() => globalThis.__vibehubRevealedPath)
+      assert.equal(revealedPath, NODE_FIXTURE, 'Finder 应收到已保存项目的真实路径')
+
+      const missingResult = await window.evaluate(() =>
+        window.api.revealProjectInFinder('missing-project-id')
+      )
+      assert.equal(missingResult, false, '不存在的项目 ID 不应该触发 Finder')
+    })
+    console.log('PASS: testRevealProjectInFinder')
+  } finally {
+    fs.rmSync(testHome, { recursive: true, force: true })
+  }
+}
+
+async function testOpenProjectInTerminal() {
+  const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
+  try {
+    await withApp(testHome, async (window) => {
+      const addResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        NODE_FIXTURE
+      )
+      assert.equal(addResult.success, true, '项目应该添加成功')
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+      assert.equal(
+        await window.locator('button[aria-label="在终端中打开"]').isVisible(),
+        true,
+        '项目卡片应该展示终端快捷按钮'
+      )
+
+      const openResult = await window.evaluate((projectId) => {
+        return window.api.openProjectInTerminal(projectId)
+      }, addResult.project.id)
+      assert.equal(openResult, true, '有效项目应该成功调用终端打开命令')
+
+      const missingResult = await window.evaluate(() =>
+        window.api.openProjectInTerminal('missing-project-id')
+      )
+      assert.equal(missingResult, false, '不存在的项目 ID 不应该执行终端命令')
+    })
+    console.log('PASS: testOpenProjectInTerminal')
+  } finally {
+    fs.rmSync(testHome, { recursive: true, force: true })
+  }
+}
+
+async function testOpenProjectInEditor() {
+  const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
+  try {
+    await withApp(testHome, async (window) => {
+      const addResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        NODE_FIXTURE
+      )
+      assert.equal(addResult.success, true, '项目应该添加成功')
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+      await window.locator('button[aria-label="用代码编辑器打开"]').click()
+      assert.equal(
+        await window.locator('button:has-text("用 Cursor 打开")').isVisible(),
+        true,
+        '编辑器菜单应该提供 Cursor'
+      )
+      assert.equal(
+        await window.locator('button:has-text("用 VS Code 打开")').isVisible(),
+        true,
+        '编辑器菜单应该提供 VS Code'
+      )
+
+      const cursorResult = await window.evaluate((projectId) => {
+        return window.api.openProjectInEditor(projectId, 'cursor')
+      }, addResult.project.id)
+      assert.equal(cursorResult, true, '有效项目应该成功调用 Cursor 打开命令')
+
+      const vscodeResult = await window.evaluate((projectId) => {
+        return window.api.openProjectInEditor(projectId, 'vscode')
+      }, addResult.project.id)
+      assert.equal(vscodeResult, true, '有效项目应该成功调用 VS Code 打开命令')
+
+      const missingResult = await window.evaluate(() =>
+        window.api.openProjectInEditor('missing-project-id', 'cursor')
+      )
+      assert.equal(missingResult, false, '不存在的项目 ID 不应该执行编辑器命令')
+
+      const unsupportedResult = await window.evaluate((projectId) => {
+        return window.api.openProjectInEditor(projectId, 'unsupported')
+      }, addResult.project.id)
+      assert.equal(unsupportedResult, false, '白名单之外的编辑器不应该执行命令')
+    })
+    console.log('PASS: testOpenProjectInEditor')
+  } finally {
+    fs.rmSync(testHome, { recursive: true, force: true })
   }
 }
 
@@ -181,9 +308,78 @@ async function testUnknownTypeStartCommand() {
   }
 }
 
+async function testFavoriteProjectsStayPinnedAndPersist() {
+  const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
+  try {
+    await withApp(testHome, async (window) => {
+      const firstResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        NODE_FIXTURE
+      )
+      const secondResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        UNKNOWN_FIXTURE
+      )
+      assert.equal(firstResult.success, true, '第一个项目应该添加成功')
+      assert.equal(secondResult.success, true, '第二个项目应该添加成功')
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+
+      const secondCard = window.locator(`[data-project-id="${secondResult.project.id}"]`)
+      await secondCard.locator('button[aria-label="收藏"]').click()
+      await window.waitForTimeout(300)
+
+      let orderedProjectIds = await window
+        .locator('[data-project-id]')
+        .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-project-id')))
+      assert.equal(orderedProjectIds[0], secondResult.project.id, '收藏项目应该立即置顶')
+      assert.equal(
+        await secondCard.locator('button[aria-label="取消收藏"]').isVisible(),
+        true,
+        '收藏后星标按钮应该切换为取消收藏'
+      )
+
+      const projectsFile = path.join(testHome, '.vibehub', 'projects.json')
+      const persistedProjects = JSON.parse(fs.readFileSync(projectsFile, 'utf-8'))
+      assert.equal(
+        persistedProjects.find((project) => project.id === secondResult.project.id).isFavorite,
+        true,
+        '收藏状态应该写入 projects.json'
+      )
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+      orderedProjectIds = await window
+        .locator('[data-project-id]')
+        .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-project-id')))
+      assert.equal(orderedProjectIds[0], secondResult.project.id, '重启界面后收藏项目仍应置顶')
+
+      await window
+        .locator(`[data-project-id="${secondResult.project.id}"]`)
+        .locator('button[aria-label="取消收藏"]')
+        .click()
+      await window.waitForTimeout(300)
+      orderedProjectIds = await window
+        .locator('[data-project-id]')
+        .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-project-id')))
+      assert.equal(orderedProjectIds[0], firstResult.project.id, '取消收藏后应恢复原有排序')
+    })
+    console.log('PASS: testFavoriteProjectsStayPinnedAndPersist')
+  } finally {
+    fs.rmSync(testHome, { recursive: true, force: true })
+  }
+}
+
 async function main() {
   await testEditAndTagFlow()
   await testUnknownTypeStartCommand()
+  await testFavoriteProjectsStayPinnedAndPersist()
+  await testRevealProjectInFinder()
+  await testOpenProjectInTerminal()
+  await testOpenProjectInEditor()
   console.log('ALL E2E TESTS PASSED')
 }
 
