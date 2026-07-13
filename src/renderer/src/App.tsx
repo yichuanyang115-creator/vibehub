@@ -137,6 +137,18 @@ function App(): React.JSX.Element {
       })
   }, [])
 
+  const handleOpenInTerminal = useCallback((projectId: string): void => {
+    window.api
+      .openProjectInTerminal(projectId)
+      .then((success) => {
+        setProjectActionError(success ? null : '无法在终端中打开项目，项目路径可能已失效')
+      })
+      .catch((error) => {
+        console.error('Failed to open project in Terminal', error)
+        setProjectActionError('无法在终端中打开项目')
+      })
+  }, [])
+
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>): void => {
     event.preventDefault()
     setIsDragOver(true)
@@ -260,6 +272,7 @@ function App(): React.JSX.Element {
                     updateProject(projectId, { isFavorite })
                   }
                   onRevealInFinder={handleRevealInFinder}
+                  onOpenInTerminal={handleOpenInTerminal}
                   onRequestDelete={handleRequestDelete}
                   onRequestUpdatePath={handleRequestUpdatePath}
                 />

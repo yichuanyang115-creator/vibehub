@@ -1,4 +1,5 @@
 import { ipcMain, app, shell } from 'electron'
+import { execFile } from 'child_process'
 import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { basename, join } from 'path'
@@ -164,6 +165,19 @@ function revealProjectInFinder(projectId: string): boolean {
   return true
 }
 
+function openProjectInTerminal(projectId: string): Promise<boolean> {
+  const project = loadProjects().find((item) => item.id === projectId)
+  if (!project || !existsSync(project.path)) {
+    return Promise.resolve(false)
+  }
+  // 使用绝对路径调用 macOS open，且目录只从 store 读取，避免 shell 字符串拼接和命令注入。
+  // E2E 可替换执行器，避免自动化测试真的弹出 Terminal 窗口。
+  const openCommand = process.env.VIBEHUB_TEST_OPEN_COMMAND ?? '/usr/bin/open'
+  return new Promise((resolve) => {
+    execFile(openCommand, ['-a', 'Terminal', project.path], (error) => resolve(error === null))
+  })
+}
+
 export function registerProjectsIpc(): void {
   ipcMain.handle('projects:getAll', () => {
     return loadProjects()
@@ -194,5 +208,9 @@ export function registerProjectsIpc(): void {
 
   ipcMain.handle('projects:revealInFinder', (_event, projectId: string) => {
     return revealProjectInFinder(projectId)
+  })
+
+  ipcMain.handle('projects:openInTerminal', (_event, projectId: string) => {
+    return openProjectInTerminal(projectId)
   })
 }

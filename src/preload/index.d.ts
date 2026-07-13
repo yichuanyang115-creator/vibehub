@@ -16,6 +16,7 @@ interface Api {
   deleteProject: (projectId: string) => Promise<void>
   updateProjectPath: (projectId: string, newPath: string) => Promise<Project | null>
   revealProjectInFinder: (projectId: string) => Promise<boolean>
+  openProjectInTerminal: (projectId: string) => Promise<boolean>
   uploadIcon: (projectId: string, mimeType: string, base64Data: string) => Promise<UploadIconResult>
   createTag: (name: string) => Promise<Tag>
   renameTag: (tagId: string, name: string) => Promise<Tag | null>

@@ -7,6 +7,7 @@ import {
   Globe,
   Pencil,
   Play,
+  SquareTerminal,
   Square,
   Star
 } from 'lucide-react'
@@ -24,6 +25,7 @@ interface ProjectCardProps {
   onEdit: (projectId: string) => void
   onToggleFavorite: (projectId: string, isFavorite: boolean) => void
   onRevealInFinder: (projectId: string) => void
+  onOpenInTerminal: (projectId: string) => void
   onRequestDelete: (projectId: string) => void
   onRequestUpdatePath: (projectId: string) => void
 }
@@ -44,6 +46,7 @@ export function ProjectCard({
   onEdit,
   onToggleFavorite,
   onRevealInFinder,
+  onOpenInTerminal,
   onRequestDelete,
   onRequestUpdatePath
 }: ProjectCardProps): React.JSX.Element {
@@ -121,6 +124,15 @@ export function ProjectCard({
                 className="shrink-0 text-text-tertiary transition-colors hover:text-text-secondary"
               >
                 <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenInTerminal(project.id)}
+                aria-label="在终端中打开"
+                title="在终端中打开"
+                className="shrink-0 text-text-tertiary transition-colors hover:text-text-secondary"
+              >
+                <SquareTerminal className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -269,6 +281,7 @@ export function ProjectCard({
           y={contextMenuPos.y}
           onEdit={() => onEdit(project.id)}
           onRevealInFinder={() => onRevealInFinder(project.id)}
+          onOpenInTerminal={() => onOpenInTerminal(project.id)}
           onDelete={() => onRequestDelete(project.id)}
           onClose={() => setContextMenuPos(null)}
         />

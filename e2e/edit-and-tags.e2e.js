@@ -15,7 +15,11 @@ async function withApp(testHome, run) {
   const app = await electron.launch({
     args: ['.'],
     cwd: PROJECT_ROOT,
-    env: { ...process.env, VIBEHUB_TEST_HOME: testHome }
+    env: {
+      ...process.env,
+      VIBEHUB_TEST_HOME: testHome,
+      VIBEHUB_TEST_OPEN_COMMAND: '/usr/bin/true'
+    }
   })
   try {
     const window = await app.firstWindow()
@@ -58,6 +62,41 @@ async function testRevealProjectInFinder() {
       assert.equal(missingResult, false, '不存在的项目 ID 不应该触发 Finder')
     })
     console.log('PASS: testRevealProjectInFinder')
+  } finally {
+    fs.rmSync(testHome, { recursive: true, force: true })
+  }
+}
+
+async function testOpenProjectInTerminal() {
+  const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
+  try {
+    await withApp(testHome, async (window) => {
+      const addResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        NODE_FIXTURE
+      )
+      assert.equal(addResult.success, true, '项目应该添加成功')
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+      assert.equal(
+        await window.locator('button[aria-label="在终端中打开"]').isVisible(),
+        true,
+        '项目卡片应该展示终端快捷按钮'
+      )
+
+      const openResult = await window.evaluate((projectId) => {
+        return window.api.openProjectInTerminal(projectId)
+      }, addResult.project.id)
+      assert.equal(openResult, true, '有效项目应该成功调用终端打开命令')
+
+      const missingResult = await window.evaluate(() =>
+        window.api.openProjectInTerminal('missing-project-id')
+      )
+      assert.equal(missingResult, false, '不存在的项目 ID 不应该执行终端命令')
+    })
+    console.log('PASS: testOpenProjectInTerminal')
   } finally {
     fs.rmSync(testHome, { recursive: true, force: true })
   }
@@ -288,6 +327,7 @@ async function main() {
   await testUnknownTypeStartCommand()
   await testFavoriteProjectsStayPinnedAndPersist()
   await testRevealProjectInFinder()
+  await testOpenProjectInTerminal()
   console.log('ALL E2E TESTS PASSED')
 }
 
