@@ -28,14 +28,30 @@ export function useProjects(onProjectError?: (projectId: string) => void): UsePr
   }, [])
 
   useEffect(() => {
-    refresh()
-      .then(() => setLoadError(null))
+    let isActive = true
+    window.api
+      .getProjects()
+      .then((result) => {
+        if (isActive) {
+          setProjects(result)
+          setLoadError(null)
+        }
+      })
       .catch((error) => {
         console.error('Failed to load projects', error)
-        setLoadError('加载项目列表失败')
+        if (isActive) {
+          setLoadError('加载项目列表失败')
+        }
       })
-      .finally(() => setIsLoading(false))
-  }, [refresh])
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false)
+        }
+      })
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   useEffect(() => {
     return window.api.onProjectStatusChanged((updatedProject) => {
