@@ -181,9 +181,75 @@ async function testUnknownTypeStartCommand() {
   }
 }
 
+async function testFavoriteProjectsStayPinnedAndPersist() {
+  const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vibehub-e2e-'))
+  try {
+    await withApp(testHome, async (window) => {
+      const firstResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        NODE_FIXTURE
+      )
+      const secondResult = await window.evaluate(
+        (fixturePath) => window.api.addProject(fixturePath),
+        UNKNOWN_FIXTURE
+      )
+      assert.equal(firstResult.success, true, '第一个项目应该添加成功')
+      assert.equal(secondResult.success, true, '第二个项目应该添加成功')
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+
+      const secondCard = window.locator(`[data-project-id="${secondResult.project.id}"]`)
+      await secondCard.locator('button[aria-label="收藏"]').click()
+      await window.waitForTimeout(300)
+
+      let orderedProjectIds = await window
+        .locator('[data-project-id]')
+        .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-project-id')))
+      assert.equal(orderedProjectIds[0], secondResult.project.id, '收藏项目应该立即置顶')
+      assert.equal(
+        await secondCard.locator('button[aria-label="取消收藏"]').isVisible(),
+        true,
+        '收藏后星标按钮应该切换为取消收藏'
+      )
+
+      const projectsFile = path.join(testHome, '.vibehub', 'projects.json')
+      const persistedProjects = JSON.parse(fs.readFileSync(projectsFile, 'utf-8'))
+      assert.equal(
+        persistedProjects.find((project) => project.id === secondResult.project.id).isFavorite,
+        true,
+        '收藏状态应该写入 projects.json'
+      )
+
+      await window.reload()
+      await window.waitForLoadState('domcontentloaded')
+      await window.waitForTimeout(500)
+      orderedProjectIds = await window
+        .locator('[data-project-id]')
+        .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-project-id')))
+      assert.equal(orderedProjectIds[0], secondResult.project.id, '重启界面后收藏项目仍应置顶')
+
+      await window
+        .locator(`[data-project-id="${secondResult.project.id}"]`)
+        .locator('button[aria-label="取消收藏"]')
+        .click()
+      await window.waitForTimeout(300)
+      orderedProjectIds = await window
+        .locator('[data-project-id]')
+        .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-project-id')))
+      assert.equal(orderedProjectIds[0], firstResult.project.id, '取消收藏后应恢复原有排序')
+    })
+    console.log('PASS: testFavoriteProjectsStayPinnedAndPersist')
+  } finally {
+    fs.rmSync(testHome, { recursive: true, force: true })
+  }
+}
+
 async function main() {
   await testEditAndTagFlow()
   await testUnknownTypeStartCommand()
+  await testFavoriteProjectsStayPinnedAndPersist()
   console.log('ALL E2E TESTS PASSED')
 }
 
