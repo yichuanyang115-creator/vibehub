@@ -39,7 +39,11 @@ function parseJsonFile<T>(filePath: string): T[] {
 }
 
 export function loadProjects(): Project[] {
-  return parseJsonFile<Project>(getProjectsFilePath())
+  return parseJsonFile<Project>(getProjectsFilePath()).map((project) => ({
+    ...project,
+    // 兼容收藏功能上线前已经保存的 projects.json。
+    isFavorite: project.isFavorite ?? false
+  }))
 }
 
 export function saveProjects(projects: Project[]): void {

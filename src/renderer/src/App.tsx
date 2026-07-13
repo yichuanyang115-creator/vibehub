@@ -18,15 +18,19 @@ import type { Project, SortOption } from '../../shared/types'
 // REQ-010：排序方式对最近打开/最常打开值相同的项目做兜底，避免顺序不稳定
 function sortProjects(projects: Project[], sortOption: SortOption): Project[] {
   const sorted = [...projects]
+  const compareFavorite = (a: Project, b: Project): number =>
+    Number(b.isFavorite) - Number(a.isFavorite)
   switch (sortOption) {
     case 'recent':
-      return sorted.sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0))
+      return sorted.sort(
+        (a, b) => compareFavorite(a, b) || (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0)
+      )
     case 'frequent':
-      return sorted.sort((a, b) => b.openCount - a.openCount)
+      return sorted.sort((a, b) => compareFavorite(a, b) || b.openCount - a.openCount)
     case 'name-asc':
-      return sorted.sort((a, b) => a.name.localeCompare(b.name))
+      return sorted.sort((a, b) => compareFavorite(a, b) || a.name.localeCompare(b.name))
     case 'name-desc':
-      return sorted.sort((a, b) => b.name.localeCompare(a.name))
+      return sorted.sort((a, b) => compareFavorite(a, b) || b.name.localeCompare(a.name))
   }
 }
 
@@ -60,6 +64,7 @@ function App(): React.JSX.Element {
     refreshProjects
   } = useProjects(handleProjectError)
   const [updatePathError, setUpdatePathError] = useState<string | null>(null)
+  const [projectActionError, setProjectActionError] = useState<string | null>(null)
   const { tags, createTag, renameTag, deleteTag } = useTags()
   const [isDragOver, setIsDragOver] = useState(false)
 
@@ -119,6 +124,18 @@ function App(): React.JSX.Element {
     },
     [editingProjectId, refreshProjects]
   )
+
+  const handleRevealInFinder = useCallback((projectId: string): void => {
+    window.api
+      .revealProjectInFinder(projectId)
+      .then((success) => {
+        setProjectActionError(success ? null : '无法在 Finder 中显示项目，项目路径可能已失效')
+      })
+      .catch((error) => {
+        console.error('Failed to reveal project in Finder', error)
+        setProjectActionError('无法在 Finder 中显示项目')
+      })
+  }, [])
 
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>): void => {
     event.preventDefault()
@@ -209,6 +226,19 @@ function App(): React.JSX.Element {
             </div>
           )}
 
+          {projectActionError && (
+            <div className="flex items-center justify-between rounded-md bg-danger/10 px-md py-sm text-xs text-danger">
+              <span>{projectActionError}</span>
+              <button
+                type="button"
+                onClick={() => setProjectActionError(null)}
+                aria-label="关闭提示"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {isLoading ? (
             <SkeletonGrid />
           ) : projects.length === 0 ? (
@@ -226,6 +256,10 @@ function App(): React.JSX.Element {
                   onStop={stopProject}
                   onOpenLogs={setOpenLogPanelProjectId}
                   onEdit={setEditingProjectId}
+                  onToggleFavorite={(projectId, isFavorite) =>
+                    updateProject(projectId, { isFavorite })
+                  }
+                  onRevealInFinder={handleRevealInFinder}
                   onRequestDelete={handleRequestDelete}
                   onRequestUpdatePath={handleRequestUpdatePath}
                 />
